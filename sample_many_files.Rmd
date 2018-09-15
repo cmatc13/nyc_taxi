@@ -1,0 +1,154 @@
+---
+title: "Sampling from 52Gb of data"
+author: "Callum Matchett"
+date: "15 September 2018"
+output: html_document
+---
+## R Markdown
+
+In this Markdown document I am going to sample dat from the NYC taxi dataset available at http://www.nyc.gov/html/tlc/html/about/trip_record_data.shtml. I have downloaded monthly data from 2014 and 2015 for yellow and green taxi's resulting in a total of 48 files. Monthly yellow taxi data files are approximately 2 Gb with about 13 million rows while monthly green taxi data from the same time period are about 200 Mb and close to 2 million rows. 
+
+I will loop through each one of the files reading in 500,000 rows and 1,000,000 rows and randomly sample 2000 and 1200 rows at each iteration for the green and yellow taxi data respectively. Then I will bind these two datasets into one final dataset.
+
+The whole process takes my machine (8Gb RAM PC) about 45 mins to complete.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+load required packages
+
+```{r cars}
+require(data.table)
+require(magrittr)
+require(dplyr)
+require(readr)
+```
+
+A list of the files to sample from
+
+```{r pressure, echo=FALSE}
+(data_files_g <- list.files("D:/R/taxiAssignment/Data_files/green_taxi",recursive = TRUE,full.names = TRUE))
+(data_files_y <- list.files("D:/R/taxiAssignment/Data_files/yellow_taxi",recursive = TRUE,full.names = TRUE))
+```
+
+In order for this code to be generalisable, the number of rows to read in at each iteration (nrows argument in fread) needs
+to be smaller than the number of rows in the smallest file. Also the iterations for i, need to be large enough to loop through all rows of the data and can be arbitrarily large as this code will 'break' out of the loop once it reaches the end of the file.
+
+For jobs that take significant time to run such as this, I usually like to print out the number of rows at each iteration so that I know where the loop is running and if my machine has crashed or not but for this presentation I have commented it out. 
+
+```{r, }
+taxi_green <- data.table()
+taxi_yellow <- data.table()
+
+#green taxis
+set.seed(6604)
+
+for(j in data_files_g){
+    
+    first = TRUE
+    for(i in 1:1e15){
+        
+        if(first == TRUE){
+            
+            taxi_g <- fread(j, sep = ",", fill = T,
+                          nrows=500000)
+            n1 = nrow(taxi_g)
+            #print(paste("nrows = ", n1))
+            taxi_g <- taxi_g[, c(2, 3, 7, 6, 9, 8)]
+            names(taxi_g) <- c("pickup_datetime", "dropoff_datetime", "pickup_lat",
+                               "pickup_lon", "dropoff_lat", "dropoff_lon")
+            taxi_g <- sample_n(na.omit(taxi_g), 2000)
+            first <- FALSE
+        }else{
+        
+            taxi_bind <- fread(j, sep = ",", fill = T,
+                            nrows=500000, skip=n1+1)    
+            #break out of loop once reach end of file
+            if(nrow(taxi_bind) < 500000){
+                n1 = n1+nrow(taxi_bind)
+                #print(paste("nrows = ", n1))
+                taxi_bind <- taxi_bind[,c(2, 3, 7,6, 9, 8)]
+                names(taxi_bind) <- c("pickup_datetime", "dropoff_datetime", "pickup_lat", 
+                                      "pickup_lon", "dropoff_lat", "dropoff_lon")
+                taxi_bind <- sample_n(na.omit(taxi_bind), 2000)
+                taxi_g <- bind_rows(taxi_g, taxi_bind)
+                break
+            }
+        
+            n1 = n1+nrow(taxi_bind)
+            #print(paste("nrows = ", n1))
+            taxi_bind <- taxi_bind[,c(2,3, 7,6,9,8)]
+            names(taxi_bind) <- c("pickup_datetime", "dropoff_datetime", "pickup_lat", 
+                                  "pickup_lon", "dropoff_lat", "dropoff_lon")
+            taxi_bind <- sample_n(na.omit(taxi_bind), 2000)
+            taxi_g <- bind_rows(taxi_g, taxi_bind)
+        }
+    }
+    taxi_green <- bind_rows(taxi_green, taxi_g)
+    #print(paste("nrows taxi green = ", nrow(taxi_green)))
+}
+
+#yellow taxis
+set.seed(6604)
+
+for(j in data_files_y){
+    first = TRUE
+    #set iterations and nrows large enough to get through largest files, however nrows must be smaller than nrows of smallest file
+    for(i in 1:1e15){
+        if(first == TRUE){
+            taxi_y <- fread(j, sep = ",", fill = T,
+                          nrows=1000000)
+            n1 = nrow(taxi_y)
+            #print(paste("nrows = ", n1))
+            taxi_y <- taxi_y[ ,c(2, 3,  7, 6, 11, 10)]
+            names(taxi_y) <- c("pickup_datetime", "dropoff_datetime", "pickup_lat",
+                               "pickup_lon", "dropoff_lat", "dropoff_lon")
+            taxi_y <- sample_n(na.omit(taxi_y), 1200)
+        
+            first <- FALSE
+        }else{
+            taxi_bind1 <- fread(j, sep = ",", fill = T,
+                            nrows=1000000, skip=n1+1)    
+            #break out of loop once reach end of file
+            if(nrow(taxi_bind1) < 1000000){
+                n1 = n1+nrow(taxi_bind1)
+                #print(paste("nrows = ", n1))
+                taxi_bind1 <- taxi_bind1[,c(2,3,7,6,11,10)]
+                names(taxi_bind1) <- c("pickup_datetime", "dropoff_datetime", "pickup_lat", 
+                                       "pickup_lon", "dropoff_lat", "dropoff_lon")
+                taxi_bind1 <- sample_n(na.omit(taxi_bind1), 1200)
+                taxi_y <- bind_rows(taxi_y, taxi_bind1)
+            
+                break
+            
+            }
+        
+            n1 = n1+nrow(taxi_bind1)
+            #print(paste("nrows = ", n1))
+            taxi_bind1 <- taxi_bind1[,c(2,3, 7,6,11,10)]
+            names(taxi_bind1) <- c("pickup_datetime", "dropoff_datetime", "pickup_lat", 
+                                   "pickup_lon", "dropoff_lat", "dropoff_lon")
+            taxi_bind1 <- sample_n(na.omit(taxi_bind1), 1200)
+            taxi_y <- bind_rows(taxi_y, taxi_bind1)
+        }
+    }
+    taxi_yellow <- bind_rows(taxi_yellow, taxi_y)
+    #print(paste("nrows taxi_yellow =", nrow(taxi_yellow)))
+}
+
+taxi_yellow <- taxi_yellow %>% mutate(cab_type = rep("yellow", nrow(taxi_yellow)))
+taxi_green <- taxi_green %>% mutate(cab_type = rep("green", nrow(taxi_green)))
+
+
+```
+
+Final dataset
+
+```{r}
+(taxi_data <- bind_rows(taxi_yellow, taxi_green))
+
+```
