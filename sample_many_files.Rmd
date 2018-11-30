@@ -31,8 +31,8 @@ require(readr)
 A list of the files to sample from
 
 ```{r pressure, echo=FALSE}
-(data_files_g <- list.files("D:/R/taxiAssignment/Data_files/green_taxi",recursive = TRUE,full.names = TRUE))
-(data_files_y <- list.files("D:/R/taxiAssignment/Data_files/yellow_taxi",recursive = TRUE,full.names = TRUE))
+(data_files_g <- list.files("~/green_taxi",recursive = TRUE,full.names = TRUE))
+(data_files_y <- list.files("~/yellow_taxi",recursive = TRUE,full.names = TRUE))
 ```
 
 In order for this code to be generalisable, the number of rows to read in at each iteration (nrows argument in fread) needs
